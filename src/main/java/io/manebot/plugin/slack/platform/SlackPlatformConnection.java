@@ -7,6 +7,7 @@ import com.ullink.slack.simpleslackapi.SlackUser;
 import com.ullink.slack.simpleslackapi.impl.SlackSessionFactory;
 import io.manebot.chat.Chat;
 
+import io.manebot.chat.Community;
 import io.manebot.platform.AbstractPlatformConnection;
 import io.manebot.platform.Platform;
 import io.manebot.platform.PlatformUser;
@@ -20,6 +21,7 @@ import io.manebot.plugin.slack.platform.user.SlackPlatformUser;
 
 import java.io.IOException;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Objects;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
@@ -56,6 +58,10 @@ public class SlackPlatformConnection extends AbstractPlatformConnection {
     @Override
     protected Chat loadChatById(String id) {
         return loadChat(slackSession.findChannelByName(Objects.requireNonNull(id)));
+    }
+
+    @Override protected Community loadCommunityById(String id) {
+        return null;
     }
 
     private Chat loadChat(SlackChannel channel) {
@@ -157,5 +163,13 @@ public class SlackPlatformConnection extends AbstractPlatformConnection {
     @Override
     public Collection<String> getChatIds() {
         return slackSession.getChannels().stream().map(SlackChannel::getId).collect(Collectors.toList());
+    }
+
+    @Override public Collection<String> getCommunityIds() {
+        return Collections.emptyList();
+    }
+
+    @Override public Collection<Community> getCommunities() {
+        return getCommunityIds().stream().map(this::loadCommunityById).collect(Collectors.toList());
     }
 }

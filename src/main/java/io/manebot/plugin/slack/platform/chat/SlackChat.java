@@ -6,6 +6,7 @@ import com.ullink.slack.simpleslackapi.SlackPreparedMessage;
 import com.ullink.slack.simpleslackapi.replies.SlackMessageReply;
 import io.manebot.chat.Chat;
 import io.manebot.chat.ChatMessage;
+import io.manebot.chat.Community;
 import io.manebot.chat.TextFormat;
 import io.manebot.platform.Platform;
 
@@ -54,6 +55,10 @@ public class SlackChat implements Chat {
     @Override
     public void addMember(String platformId) {
         throw new UnsupportedOperationException();
+    }
+
+    @Override public Community getCommunity() {
+        return null;
     }
 
     @Override
