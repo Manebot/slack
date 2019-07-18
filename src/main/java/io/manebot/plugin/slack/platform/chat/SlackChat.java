@@ -1,6 +1,9 @@
 package io.manebot.plugin.slack.platform.chat;
 
 import com.ullink.slack.simpleslackapi.SlackChannel;
+import com.ullink.slack.simpleslackapi.SlackMessageHandle;
+import com.ullink.slack.simpleslackapi.SlackPreparedMessage;
+import com.ullink.slack.simpleslackapi.replies.SlackMessageReply;
 import io.manebot.chat.Chat;
 import io.manebot.chat.ChatMessage;
 import io.manebot.chat.TextFormat;
@@ -10,6 +13,7 @@ import io.manebot.platform.PlatformUser;
 import io.manebot.plugin.slack.platform.SlackPlatformConnection;
 
 import java.util.Collection;
+import java.util.Collections;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
@@ -34,7 +38,7 @@ public class SlackChat implements Chat {
 
     @Override
     public void setName(String name) throws UnsupportedOperationException {
-        slackChannel.setId(name);
+        throw new UnsupportedOperationException();
     }
 
     @Override
@@ -44,12 +48,12 @@ public class SlackChat implements Chat {
 
     @Override
     public void removeMember(String platformId) {
-        connection.getApi().kickUserFromChannel(slackChannel.getId(), platformId);
+        throw new UnsupportedOperationException();
     }
 
     @Override
     public void addMember(String platformId) {
-        connection.getApi().inviteUserToChannel(slackChannel.getId(), platformId);
+        throw new UnsupportedOperationException();
     }
 
     @Override
@@ -64,7 +68,7 @@ public class SlackChat implements Chat {
 
     @Override
     public boolean isPrivate() {
-        return false;
+        return slackChannel.isDirect();
     }
 
     @Override
@@ -83,22 +87,34 @@ public class SlackChat implements Chat {
     }
 
     public void setTopic(String topic) {
-        connection.getApi().setChannelTopic(getId(), topic);
+        throw new UnsupportedOperationException();
     }
 
     public String getTopic() {
-        Topic topic = slackChannel.getTopic();
-        return topic == null ? null : topic.getValue();
+        return slackChannel.getTopic();
     }
 
     @Override
     public TextFormat getFormat() {
-        return null;
+        return SlackTextFormat.INSTANCE;
     }
 
     @Override
     public Collection<ChatMessage> sendMessage(Consumer<ChatMessage.Builder> function) {
-        return null;
+        SlackChatMessage.MessageBuilder builder = new SlackChatMessage.MessageBuilder(connection.getSelf(), this);
+        function.accept(builder);
+
+        SlackPreparedMessage preparedMessage = builder.build();
+
+        connection.getSession().sendMessage(slackChannel, preparedMessage);
+
+        SlackSentChatMessage sentChatMessage = new SlackSentChatMessage(
+                        connection,
+                        new SlackChatSender(connection.getSelf(), this),
+                        preparedMessage
+        );
+
+        return Collections.singletonList(sentChatMessage);
     }
 
     @Override
@@ -109,5 +125,10 @@ public class SlackChat implements Chat {
     @Override
     public boolean canSendEmoji() {
         return true;
+    }
+
+    @Override
+    public int getDefaultPageSize() {
+        return 5;
     }
 }

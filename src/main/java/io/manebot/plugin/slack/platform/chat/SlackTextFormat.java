@@ -79,6 +79,7 @@ public final class SlackTextFormat implements TextFormat {
                 case '>':
                 case '~':
                 case '*':
+                case ':':
                     // https://webapps.stackexchange.com/questions/86557/how-do-i-escape-formatting-characters-in-slack
                     builder.append('\f');
                     break;

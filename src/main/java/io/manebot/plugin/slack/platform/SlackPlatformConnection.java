@@ -5,7 +5,6 @@ import com.ullink.slack.simpleslackapi.SlackChannel;
 import com.ullink.slack.simpleslackapi.SlackSession;
 import com.ullink.slack.simpleslackapi.SlackUser;
 import com.ullink.slack.simpleslackapi.impl.SlackSessionFactory;
-import com.ullink.slack.simpleslackapi.listeners.SlackConnectedListener;
 import io.manebot.chat.Chat;
 
 import io.manebot.platform.AbstractPlatformConnection;
@@ -15,6 +14,8 @@ import io.manebot.platform.PlatformUser;
 import io.manebot.plugin.Plugin;
 import io.manebot.plugin.PluginException;
 import io.manebot.plugin.slack.platform.chat.SlackChat;
+import io.manebot.plugin.slack.platform.chat.SlackReceivedChatMessage;
+import io.manebot.plugin.slack.platform.chat.SlackChatSender;
 import io.manebot.plugin.slack.platform.user.SlackPlatformUser;
 
 import java.io.IOException;
@@ -28,6 +29,7 @@ public class SlackPlatformConnection extends AbstractPlatformConnection {
     private final Plugin plugin;
 
     private SlackSession slackSession;
+    private String userId;
 
     public SlackPlatformConnection(Platform platform, Plugin plugin) {
         this.platform = platform;
@@ -53,7 +55,7 @@ public class SlackPlatformConnection extends AbstractPlatformConnection {
 
     @Override
     protected Chat loadChatById(String id) {
-        return loadChat(slackSession.findChannelById(Objects.requireNonNull(id)));
+        return loadChat(slackSession.findChannelByName(Objects.requireNonNull(id)));
     }
 
     private Chat loadChat(SlackChannel channel) {
@@ -80,12 +82,34 @@ public class SlackPlatformConnection extends AbstractPlatformConnection {
         slackSession = SlackSessionFactory.createWebSocketSlackSession(token);
 
         slackSession.addMessagePostedListener((event, slackSession) -> {
+            try {
+                SlackUser author = event.getUser();
 
+                if (author == null || author.isBot()) return;
+
+                SlackPlatformUser user = (SlackPlatformUser) getPlatformUser(author.getId());
+
+                SlackChat chat = getChat(event.getChannel());
+
+                SlackChatSender chatSender = new SlackChatSender(user, chat);
+
+                SlackReceivedChatMessage chatMessage = new SlackReceivedChatMessage(
+                                SlackPlatformConnection.this,
+                                chatSender,
+                                event
+                );
+
+                plugin.getBot().getChatDispatcher().executeAsync(chatMessage);
+            } catch (Throwable e) {
+                plugin.getLogger().log(Level.WARNING, "Problem handling Discord message", e);
+            }
         });
 
         slackSession.addSlackConnectedListener((event, slackSession) -> {
+            userId = event.getSlackConnectedPersona().getId();
+
             plugin.getLogger().log(Level.INFO, "Connected to slack as " +
-                    event.getSlackConnectedPersona().getId() + ".");
+                    event.getSlackConnectedPersona().getUserName() + ".");
         });
 
         slackSession.addSlackDisconnectedListener((event, slackSession) -> {
@@ -111,8 +135,8 @@ public class SlackPlatformConnection extends AbstractPlatformConnection {
     }
 
     @Override
-    public PlatformUser getSelf() {
-        throw new UnsupportedOperationException();
+    public SlackPlatformUser getSelf() {
+        return (SlackPlatformUser) getPlatformUser(userId);
     }
 
     @Override
